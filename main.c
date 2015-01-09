@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 int capacidad_taller = 10;
 int numero_macanicos_chapa = 2;
@@ -16,7 +17,7 @@ struct mecanico {
 	int identificador;
 	char* puesto;
 	int ocupado;
-
+	pthread_t thread;
 };
 
 struct vehiculo** lista_vehiculos;
@@ -117,6 +118,9 @@ cliente(void* data) {
 
 void* 
 mecanico(void* data) {
+	while(1) {
+
+	}
 	return 0;
 }
 
@@ -124,9 +128,18 @@ void
 poner_a_trabajar_mecanicos(int numero) {
 	int i = 0;
 	for(; i<numero; i++) {
-
+		pthread_create(&lista_mecanicos[i]->thread,NULL,mecanico,lista_mecanicos[i]);
 	}
 }
+
+void
+esperar_por_los_mecanicos(int numero) {
+	int i = 0;
+	for(; i<numero; i++) {
+		pthread_join(lista_mecanicos[i]->thread,NULL);
+	}
+}
+
 int
 main(void) {
 	crear_lista_vehiculos(capacidad_taller);
@@ -134,5 +147,8 @@ main(void) {
 	crear_lista_mecanicos(numero_macanicos_motor + numero_macanicos_chapa);
 	inicializar_lista_mecanicos(numero_macanicos_motor,"motor",0);
 	inicializar_lista_mecanicos(numero_macanicos_chapa,"chapa",numero_macanicos_motor);
+
+	poner_a_trabajar_mecanicos(numero_macanicos_chapa + numero_macanicos_motor);
+	esperar_por_los_mecanicos(numero_macanicos_motor + numero_macanicos_chapa);
 	return 0;
 }
