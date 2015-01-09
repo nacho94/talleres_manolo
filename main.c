@@ -9,7 +9,26 @@ struct vehiculo {
 	char* averia;
 };
 
+struct mecanico {
+	int identificador;
+	char* puesto;
+
+};
+
 struct vehiculo* lista_vehiculos[CAPACIDAD_TALLER];
+
+struct mecanico* 
+crear_mecanico(int identificador, char* puesto) {
+	struct mecanico* m;
+
+	m = (struct mecanico*)malloc(sizeof(struct mecanico));
+	m->identificador = identificador;
+
+	m->puesto = (char*)malloc(strlen(puesto));
+	strcpy(m->puesto,puesto);
+
+	return m;
+}
 
 struct vehiculo*
 crear_vehiculo(int matricula, char* averia) {
