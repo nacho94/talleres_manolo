@@ -6,7 +6,7 @@ all:
 	$(CC) $(SRCS) -o $(EXE) -lpthread
 
 run: all
-	./$(EXE)
+	./$(EXE) &
 
 .PHONY: clean
 
