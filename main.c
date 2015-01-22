@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
+#include <unistd.h>
 
 int capacidad_taller = 10;
 int numero_macanicos_chapa = 2;
 int numero_macanicos_motor = 2;
 
+pthread_mutex_t fichero;//semaforo del log
 
 struct vehiculo {
 	int matricula;
@@ -23,6 +26,31 @@ struct mecanico {
 struct vehiculo** lista_vehiculos;
 struct mecanico** lista_mecanicos;
 
+int contador_vehiculos;
+
+FILE *logFile;
+
+//• Fichero de log (FILE * logFile);
+const char *logFileName="registroTaller.log";
+
+void writeLogMessage(char *id, char *msg) {
+
+// Calculamos la hora actual
+time_t now = time(0);
+struct tm *tlocal = localtime(&now);
+char stnow[19];
+strftime(stnow, 19, "%d/%m/%y %H:%M:%S", tlocal);
+// Escribimos en el log
+
+logFile = fopen(logFileName, "a");
+fprintf(logFile, "[%s] %s: %s\n", stnow, id, msg);
+fclose(logFile);
+}
+
+int calcularAleatorios(int min, int max){
+	srand(getpid());
+	return rand() % (max-min+1) + min;
+}
 
 void
 fatal(char* msj) {
@@ -140,15 +168,33 @@ esperar_por_los_mecanicos(int numero) {
 	}
 }
 
+void
+manejadora(int sig) {
+	pthread_mutex_lock(&fichero);
+			
+	writeLogMessage("Recibida la señal", "SIGUSR1");
+
+	pthread_mutex_unlock(&fichero);
+}
+
 int
 main(void) {
+	signal(SIGUSR1,manejadora);
+	pthread_mutex_init(&fichero,NULL);
 	crear_lista_vehiculos(capacidad_taller);
 	inicializar_lista_vehiculos(capacidad_taller);
 	crear_lista_mecanicos(numero_macanicos_motor + numero_macanicos_chapa);
 	inicializar_lista_mecanicos(numero_macanicos_motor,"motor",0);
 	inicializar_lista_mecanicos(numero_macanicos_chapa,"chapa",numero_macanicos_motor);
 
+	pthread_mutex_lock(&fichero);	
+	writeLogMessage("Mecanicos empezando", "a trabajar");
+	pthread_mutex_unlock(&fichero);
+
 	poner_a_trabajar_mecanicos(numero_macanicos_chapa + numero_macanicos_motor);
-	esperar_por_los_mecanicos(numero_macanicos_motor + numero_macanicos_chapa);
+	
+	while(1) {
+		pause();
+	}
 	return 0;
 }
