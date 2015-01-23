@@ -183,6 +183,7 @@ manejadora(int sig) {
 int
 main(void) {
 	signal(SIGUSR1,manejadora);
+	signal(SIGUSR2,manejadora);
 	pthread_mutex_init(&fichero,NULL);
 	crear_lista_vehiculos(capacidad_taller);
 	inicializar_lista_vehiculos(capacidad_taller);
