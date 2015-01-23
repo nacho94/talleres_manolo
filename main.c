@@ -14,6 +14,7 @@ pthread_mutex_t fichero;//semaforo del log
 struct vehiculo {
 	int matricula;
 	char* averia;
+	int atendido;
 };
 
 struct mecanico {
@@ -73,11 +74,12 @@ crear_mecanico(int identificador, char* puesto) {
 }
 
 struct vehiculo*
-crear_vehiculo(int matricula, char* averia) {
+crear_vehiculo(int matricula, char* averia, int atendido) {
 	struct vehiculo* v;
 	//reservamos la memoria
 	v = (struct vehiculo*)malloc(sizeof(struct vehiculo));
 	v->matricula = matricula;
+	v->atendido = atendido;
 
 	v->averia = (char*)malloc(strlen(averia));
 	strcpy(v->averia,averia);
@@ -170,9 +172,10 @@ esperar_por_los_mecanicos(int numero) {
 
 void
 manejadora(int sig) {
+	char* msj;
 	pthread_mutex_lock(&fichero);
-			
-	writeLogMessage("Recibida la señal", "SIGUSR1");
+	sprintf(msj,"cuyo numero es %d",(int)sig);
+	writeLogMessage("Recibida la señal",msj);
 
 	pthread_mutex_unlock(&fichero);
 }
