@@ -5,6 +5,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define DEBUG 0
+
 int capacidad_taller = 10;
 int numero_macanicos_chapa = 2;
 int numero_macanicos_motor = 2;
@@ -39,19 +41,46 @@ FILE *logFile;
 //• Fichero de log (FILE * logFile);
 const char *logFileName="registroTaller.log";
 
-void writeLogMessage(char *id, char *msg) {
-pthread_mutex_lock(&fichero);
-// Calculamos la hora actual
-time_t now = time(0);
-struct tm *tlocal = localtime(&now);
-char stnow[19];
-strftime(stnow, 19, "%d/%m/%y %H:%M:%S", tlocal);
-// Escribimos en el log
+void writeLogMessage(char *id, char *msg,int m,int v) {
+	pthread_mutex_lock(&fichero);
+	// Calculamos la hora actual
+	time_t now = time(0);
+	struct tm *tlocal = localtime(&now);
+	char stnow[19];
+	strftime(stnow, 19, "%d/%m/%y %H:%M:%S", tlocal);
+	// Escribimos en el log
 
-logFile = fopen(logFileName, "a");
-fprintf(logFile, "[%s] %s: %s\n", stnow, id, msg);
-fclose(logFile);
-pthread_mutex_unlock(&fichero);
+#if DEBUG == 1
+	printf("[%s] %s: %s, %d\n", stnow, id, msg, n);
+#else	
+	if(m !=0 && v != 0){
+		logFile = fopen(logFileName, "a");
+	fprintf(logFile, "[%s] %s_%d: %s_%d\n", stnow, id, m, msg, v);
+	fclose(logFile);
+	}
+	if(m != 0 && v == 0){
+		logFile = fopen(logFileName, "a");
+	fprintf(logFile, "[%s] %s_%d: %s\n", stnow, id, m, msg);
+	fclose(logFile);
+
+	}
+	if(m == 0 && v != 0){
+		logFile = fopen(logFileName, "a");
+	fprintf(logFile, "[%s] %s: %s_%d\n", stnow, id, msg, v);
+	fclose(logFile);
+
+	}
+	if(m == 0 && v == 0) {
+		logFile = fopen(logFileName, "a");
+		fprintf(logFile, "[%s] %s: %s\n", stnow, id, msg);
+		fclose(logFile);
+	}
+	
+	
+	
+#endif
+
+	pthread_mutex_unlock(&fichero);
 }
 
 int calcularAleatorios(int min, int max){
@@ -204,25 +233,27 @@ void*
 cliente(void* data) {
 
 	struct vehiculo* v = (struct vehiculo*)data;
-	writeLogMessage("Entrada cliente",v->averia);
+	writeLogMessage("Entrada vehiculo",v->averia,v->matricula,0);
 	sleep(10);
 
 	espero_otro_poco://se que no se debe usar pero...
 
-	if(esta_siendo_atendido(v) != 1) {
+	if(esta_siendo_atendido(v) != 1 && esta_siendo_atendido(v) != 2) {
 		if(me_quedo_esperando_otro_poco() != 0) {
 			//espero
 			sleep(5);
 			goto espero_otro_poco;
 		}else{
-			writeLogMessage("Salida cliente","me canse de esperar");
+			writeLogMessage("Salida vehiculo","me canse de esperar",v->matricula,0);
 			retirar_vehiculo(v->posicion_en_taller);
+			pthread_exit(NULL);
 		}
 	}else{
 		pthread_mutex_lock(&v->espera_cliente);
 		pthread_mutex_unlock(&v->espera_cliente);
-		writeLogMessage("Salida cliente",""); //TODO: escribir el mensaje
+		writeLogMessage("Salida cliente","vehiculo",0,v->matricula); //TODO: escribir el mensaje
 		retirar_vehiculo(v->posicion_en_taller);
+		pthread_exit(NULL);
 		//a partir de esta linea v no es valido
 	}
 
@@ -247,16 +278,52 @@ puesto_contrario(char* puesto) {
 int 
 tipo_atencion(){
 	return calcularAleatorios(0,9);
+
 }
 
-void
-atender() {
-	sleep(5);//TODO dormir lo que toque
+char*
+atender(int tipo) {
+	char* result;
+
+	switch(tipo){
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6: 
+			result = "se le resuelve la incidencia";
+			sleep(calcularAleatorios(17,22));
+			break;
+		
+			
+		case 7:
+		case 8:
+			result = "no se dispone de piezas necesarias";
+			sleep(calcularAleatorios(12,15));
+			break;
+		
+			
+		case 9:
+			result = "no se puede resolver y se pasa al almacen";
+			sleep(calcularAleatorios(15,18));
+			break;
+		
+		default: 
+			break;
+			
+	}
+	return result;
 }
+
 
 void* 
 accion_mecanico(void* data) {
+	char* msj;
+
 	struct mecanico* m = (struct mecanico*)data;
+
 	while(1) {
 		struct vehiculo* v = buscar_vehiculo_que_mas_lleva_esperando(m->puesto);
 		if(v==NULL) {
@@ -265,16 +332,23 @@ accion_mecanico(void* data) {
 		if(v==NULL) {
 			sleep(1);
 		}else{
-			int ta = tipo_atencion();
 			atendiendo(v,1);
-			writeLogMessage("mecanico","atendiendo vehiculo");//TODO mostrar el id de vehiculo y mecanico en el mensaje
-			atender();
-			writeLogMessage("mecanico","vehiculo atendido");
-			writeLogMessage("incidencia del vehiculo", "TODO");
+			int ta = tipo_atencion();
+			
+
+			writeLogMessage("Mecanico","atendiendo Vehiculo",m->identificador+1,v->matricula);
+			//TODO mostrar el id de vehiculo y mecanico en el mensaje
+			pthread_mutex_lock(&v->espera_cliente);
+			msj = atender(ta);
+			pthread_mutex_unlock(&v->espera_cliente);
+			writeLogMessage("Mecanico","ha atendido al Vehiculo",m->identificador+1,v->matricula);
+			writeLogMessage("Incidencia del Vehiculo", msj,v->matricula,0);
 			atendiendo(v,2);
 			m->contador_cafe++;
 			if(m->contador_cafe != 0 && m->contador_cafe % 10 == 0) {
+				writeLogMessage("Mecanico","se va a tomar cafe",m->identificador+1,0);
 				sleep(20);
+				writeLogMessage("Mecanico","salio de tomar el cafe",m->identificador+1,0);
 			}
 		}
 	}
@@ -299,11 +373,14 @@ esperar_por_los_mecanicos(int numero) {
 
 void
 manejadora(int sig) {
+
+	
+	
 	char* msj;
 	struct vehiculo* v ;
 	
-	sprintf(msj,"cuyo numero es %d",(int)sig);
-	writeLogMessage("Recibida la señal",msj);
+	sprintf(msj,"cuyo numero es_%d",(int)sig);
+	writeLogMessage("Recibida la señal",msj,0,0);
 	contador_vehiculos++;
 	switch(sig){
 		case SIGUSR1:{
@@ -317,7 +394,7 @@ manejadora(int sig) {
 			break;
 		}
 		default: {
-			writeLogMessage("señal","desconocida");
+			writeLogMessage("señal","desconocida",0,0);
 			break;
 		}
 
@@ -344,7 +421,7 @@ main(void) {
 	inicializar_lista_mecanicos(numero_macanicos_chapa,"chapa",numero_macanicos_motor);
 
 	
-	writeLogMessage("Mecanicos empezando", "a trabajar");
+	writeLogMessage("Mecanicos", "empezando a trabajar",0,0);
 	
 
 	poner_a_trabajar_mecanicos(numero_macanicos_chapa + numero_macanicos_motor);
