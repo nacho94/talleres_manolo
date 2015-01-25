@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
+#include <time.h>
 
 #define DEBUG 0
 
@@ -84,7 +85,6 @@ void writeLogMessage(char *id, char *msg,int m,int v) {
 }
 
 int calcularAleatorios(int min, int max){
-	srand(getpid());
 	return rand() % (max-min+1) + min;
 }
 
@@ -414,6 +414,7 @@ main(void) {
 	pthread_mutex_init(&acceso_lista_vehiculos,NULL);
 
 	contador_vehiculos = 0;
+	srand (time(NULL));
 	crear_lista_vehiculos(capacidad_taller);
 	inicializar_lista_vehiculos(capacidad_taller);
 	crear_lista_mecanicos(numero_macanicos_motor + numero_macanicos_chapa);
