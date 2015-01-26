@@ -111,6 +111,22 @@ crear_mecanico(int identificador, char* puesto) {
 	return m;
 }
 
+void
+destruir_mecanico(struct mecanico* m) {
+	free(m->puesto);
+	free(m);
+}
+
+void
+liberar_recursos_mecanicos(int numero){
+	int i = 0;
+	for(; i<numero; i++) {
+		if(lista_mecanicos[i] != NULL){
+			destruir_mecanico(lista_mecanicos[i]);
+		}
+	}
+}
+
 struct vehiculo*
 crear_vehiculo(int matricula, char* averia, int atendido) {
 	struct vehiculo* v;
@@ -133,6 +149,16 @@ void
 destruir_vehiculo(struct vehiculo* v) {
 	free(v->averia);
 	free(v);
+}
+
+void
+liberar_recursos_vehiculos(int numero){
+	int i = 0;
+	for(; i<numero; i++) {
+		if(lista_vehiculos[i] != NULL){
+			destruir_vehiculo(lista_vehiculos[i]);
+		}
+	}
 }
 
 int
@@ -412,9 +438,12 @@ manejadora(int sig) {
 	}
 	if(insertar_vehiculo(v,capacidad_taller)!=-1){
 		poner_a_esperar_cliente(v);
+	}else{
+		destruir_vehiculo(v);
 	}
 	
 }
+
 void 
 imprimir_estadisticas(){
 
@@ -424,6 +453,7 @@ imprimir_estadisticas(){
 	}
 
 }
+
 void 
 manejador_salida(int sig) {
 	indicar_a_los_mecanicos_que_terminen(numero_macanicos_motor + numero_macanicos_chapa);
@@ -431,6 +461,8 @@ manejador_salida(int sig) {
 	esperar_por_los_mecanicos(numero_macanicos_chapa + numero_macanicos_motor);
 	imprimir_estadisticas();
 	writeLogMessage("TALLER","CERRADO",-1,-1);
+	liberar_recursos_vehiculos(capacidad_taller);
+	liberar_recursos_mecanicos(numero_macanicos_chapa + numero_macanicos_motor);
 	exit(0);
 }
 
